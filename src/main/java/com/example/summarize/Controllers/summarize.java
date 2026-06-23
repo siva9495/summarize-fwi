@@ -36,7 +36,7 @@ public class summarize {
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     examples = @ExampleObject(
                             name = "Sample lead",
-                            value = "{\"transcript\": \"Jane Doe\",\"openaimodel\": \"gpt-4o-mini\",\"summarize\": \"summary\"}"
+                            value = "{\"transcript\": \"Jane Doe\",\"openaimodel\": \"gpt-4o-mini\"}"
                     ))
     )
 
@@ -47,18 +47,35 @@ public class summarize {
     public ResponseEntity<?> createsummary(@RequestBody Map<String,String> body){
         String transcript = body.get("transcripts");
         String openaimodel = body.get("openaimodel");
-        String summarize = body.get("summarize");
+
+        String prompt = """
+                Analyze the following transcript and provide:
+                1. A concise summary (2-3 sentences)
+                2. Overall sentiment: Positive / Neutral / Negative
+                3. Key topics discussed
+
+                Transcript:
+                """ + transcript;
 
         ResponseCreateParams params = ResponseCreateParams.builder()
-                .input(requestBody.prompt())
-                .model(ChatModel.GPT_4o)
+                .input(prompt)
+                .model(openaimodel)
                 .build();
 
+        var response = client.responses().create(params);
+
+        String resultText = response.output().get(0)
+                .asMessage()
+                .content().get(0)
+                .asOutputText()
+                .text();
 
 
 
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(summary);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "model", openaimodel,
+                "result", resultText
+        ));
     }
 
     @GetMapping
